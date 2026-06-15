@@ -47,7 +47,8 @@ def main():
     parser.add_argument(
         "--launcher", choices=["none", "pytorch"], default="none", help="job launcher"
     )
-    parser.add_argument("--local_rank", type=int, default=0)
+    #parser.add_argument("--local_rank", type=int, default=0)
+    parser.add_argument("--local_rank", "--local-rank", type=int, default=0)
     args = parser.parse_args()
     opt = option.parse(args.opt, is_train=True)
 
@@ -116,7 +117,7 @@ def main():
             opt["path"]["log"],
             "train_" + opt["name"],
             level=logging.INFO,
-            screen=False,
+            screen=True,             #screen均设置为True,让logger.info能展示打印在终端
             tofile=True,
         )
         util.setup_logger(
@@ -124,7 +125,7 @@ def main():
             opt["path"]["log"],
             "val_" + opt["name"],
             level=logging.INFO,
-            screen=False,
+            screen=True,
             tofile=True,
         )
         logger = logging.getLogger("base")
@@ -144,7 +145,7 @@ def main():
             tb_logger = SummaryWriter(log_dir="log/{}/tb_logger/".format(opt["name"]))
     else:
         util.setup_logger(
-            "base", opt["path"]["log"], "train", level=logging.INFO, screen=False
+            "base", opt["path"]["log"], "train", level=logging.INFO, screen=True
         )
         logger = logging.getLogger("base")
 

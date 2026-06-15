@@ -3,7 +3,7 @@ name: ir-sde
 use_tb_logger: true
 model: denoising
 distortion: sr
-gpu_ids: [0]
+gpu_ids: [3]
 
 sde:
   max_sigma: 30
@@ -24,22 +24,24 @@ datasets:
   train:
     name: Train_Dataset
     mode: LQGT
-    dataroot_GT: /home/ziwlu/datasets/super-resolution/DF2K/HR/x4
-    dataroot_LQ: /home/ziwlu/datasets/super-resolution/DF2K/LR/x4
+    dataroot_GT: /data1/jiangtaoren/datasets/DIV2K/train/target             #/home/ziwlu/datasets/super-resolution/DF2K/HR/x4
+    dataroot_LQ: /data1/jiangtaoren/datasets/DIV2K/train/input             #/home/ziwlu/datasets/super-resolution/DF2K/LR/x4
 
     use_shuffle: true
     n_workers: 4  # per GPU
     batch_size: 4
-    GT_size: 128
-    LR_size: 32
+    GT_size: 256   #128
+    LR_size: 64    #32
     use_flip: true
     use_rot: true
     color: RGB
   val:
     name: Val_Dataset
     mode: LQGT
-    dataroot_GT: /home/ziwlu/datasets/super-resolution/bicubic_test/Set5/HR
-    dataroot_LQ: /home/ziwlu/datasets/super-resolution/bicubic_test/Set5/LRbicx4
+    dataroot_GT: /data1/jiangtaoren/datasets/DIV2K/test/target            #/home/ziwlu/datasets/super-resolution/bicubic_test/Set5/HR
+    dataroot_LQ: /data1/jiangtaoren/datasets/DIV2K/test/input             #/home/ziwlu/datasets/super-resolution/bicubic_test/Set5/LRbicx4
+    GT_size: 256
+    LR_size: 64
 
 
 #### network structures

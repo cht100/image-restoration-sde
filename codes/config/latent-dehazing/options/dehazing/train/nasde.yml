@@ -3,7 +3,7 @@ name: latent-reffusion-dehazing
 use_tb_logger: true
 model: latent_denoising
 distortion: dehazing
-gpu_ids: [0]
+gpu_ids: [1]
 
 sde:
   max_sigma: 50
@@ -25,14 +25,14 @@ datasets:
   train:
     name: Train_Dataset
     mode: LQGT
-    dataroot_GT: /home/x_ziwlu/datasets/ntire2023/dehazing/train/GT_sub
-    dataroot_LQ: /home/x_ziwlu/datasets/ntire2023/dehazing/train/LQ_sub
+    dataroot_GT: /home/quyu/16_exps/datasets/RESIDE-6K/train/GT   #/home/x_ziwlu/datasets/ntire2023/dehazing/train/GT_sub
+    dataroot_LQ: /home/quyu/16_exps/datasets/RESIDE-6K/train/hazy    #/home/x_ziwlu/datasets/ntire2023/dehazing/train/LQ_sub
 
     use_shuffle: true
     n_workers: 8  # per GPU
     batch_size: 8
-    GT_size: 1024
-    LR_size: 1024
+    GT_size: 256   #1024
+    LR_size: 256   #1024
     use_flip: true
     use_rot: true
     use_swap: false
@@ -40,8 +40,8 @@ datasets:
   val:
     name: Val_Dataset
     mode: LQGT
-    dataroot_GT: /home/x_ziwlu/datasets/ntire2023/dehazing/val/GT
-    dataroot_LQ: /home/x_ziwlu/datasets/ntire2023/dehazing/val/LQ
+    dataroot_GT: /home/quyu/16_exps/datasets/RESIDE-6K/test/GT    #/home/x_ziwlu/datasets/ntire2023/dehazing/val/GT
+    dataroot_LQ: /home/quyu/16_exps/datasets/RESIDE-6K/test/hazy    #/home/x_ziwlu/datasets/ntire2023/dehazing/val/LQ
 
 
 #### network structures

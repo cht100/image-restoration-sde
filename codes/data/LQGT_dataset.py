@@ -71,6 +71,47 @@ class LQGTDataset(data.Dataset):
             meminit=False,
         )
 
+    def center_pad(self, img, target_size, fill_value=(0, 0, 0)):
+        """
+        将OpenCV读取的图像中心填充至目标尺寸
+
+        参数:
+            img: OpenCV图像 (numpy数组)
+            target_size: 目标尺寸 (width, height)
+            fill_value: 填充值 (BGR颜色或灰度值)
+
+        返回:
+            填充后的OpenCV图像
+        """
+        # 获取原始尺寸 (注意OpenCV是width-first!)
+        h, w = img.shape[:2]  # 高度、宽度
+        target_w, target_h = target_size
+
+        # 计算填充量
+        pad_w = max(target_w - w, 0)
+        pad_h = max(target_h - h, 0)
+
+        # 均匀分配填充到四边
+        top = pad_h // 2
+        bottom = pad_h - top
+        left = pad_w // 2
+        right = pad_w - left
+
+        # 执行填充 (支持彩色和灰度图)
+        if len(img.shape) == 3 and img.shape[2]==3:  # 彩色图 (BGR)
+            return cv2.copyMakeBorder(
+                img, top, bottom, left, right,
+                cv2.BORDER_CONSTANT,
+                value=fill_value
+            )
+        else:  # 灰度图
+            fill_value_0 = fill_value[0]
+            return cv2.copyMakeBorder(
+                img, top, bottom, left, right,
+                cv2.BORDER_CONSTANT,
+                value=fill_value_0
+            )
+
     def __getitem__(self, index):
         if self.opt["data_type"] == "lmdb":
             if (self.GT_env is None) or (self.LR_env is None):
@@ -132,6 +173,12 @@ class LQGTDataset(data.Dataset):
         if self.opt["phase"] == "train":
             H, W, C = img_LR.shape
             assert LR_size == GT_size // scale, "GT size does not match LR size"
+
+            # ====================      处理图片大小<LR_size的情况,将LR/GT镜像补充到LR_size的大小
+            if LR_size > H or LR_size > W:
+                img_GT = self.center_pad(img_GT, (GT_size, GT_size))
+                img_LR = self.center_pad(img_LR, (LR_size, LR_size))
+            # ====================
 
             # randomly crop
             rnd_h = random.randint(0, max(0, H - LR_size))

@@ -7,7 +7,7 @@ import math
 import yaml
 
 try:
-    sys.path.append("../../")
+    sys.path.insert(0, os.path.abspath("../../"))       #sys.path.append("../../")
     from utils import OrderedYaml
 except ImportError:
     pass

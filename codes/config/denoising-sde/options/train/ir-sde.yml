@@ -18,19 +18,19 @@ datasets:
   train:
     name: Train_Dataset
     mode: GT
-    dataroot_GT: /home/ziwlu/datasets/trainHR
+    dataroot_GT: /data1/jiangtaoren/datasets/DFWB/train       #/home/ziwlu/datasets/trainHR
 
     use_shuffle: true
     n_workers: 4  # per GPU
     batch_size: 8
-    GT_size: 128
+    GT_size: 256      #128
     use_flip: true
     use_rot: true
     color: RGB
   val:
     name: Test_Dataset
     mode: GT
-    dataroot_GT: /home/ziwlu/datasets/testsets/McMaster
+    dataroot_GT: /data1/jiangtaoren/datasets/DFWB/test/CBSD68        #/home/ziwlu/datasets/testsets/McMaster
 
 #### network structures
 network_G:

@@ -7,7 +7,7 @@ import math
 import yaml
 
 try:
-    sys.path.append("../../")
+    sys.path.insert(0, os.path.abspath("../../"))       #sys.path.append("../../")      如果已经安装了utils库就会报错，只有insert插入到搜索列表最前面才可以
     from utils import OrderedYaml
 except ImportError:
     pass

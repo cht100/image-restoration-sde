@@ -252,7 +252,7 @@ class IRSDE(SDE):
     def reverse_sde(self, xt, T=-1, save_states=False, save_dir='sde_state', **kwargs):
         T = self.T if T < 0 else T
         x = xt.clone()
-        for t in tqdm(reversed(range(1, T + 1))):
+        for t in reversed(range(1, T + 1)):
             score = self.score_fn(x, t, **kwargs)
             x = self.reverse_sde_step(x, score, t)
 
@@ -268,7 +268,7 @@ class IRSDE(SDE):
     def reverse_ode(self, xt, T=-1, save_states=False, save_dir='ode_state', **kwargs):
         T = self.T if T < 0 else T
         x = xt.clone()
-        for t in tqdm(reversed(range(1, T + 1))):
+        for t in reversed(range(1, T + 1)):
             score = self.score_fn(x, t, **kwargs)
             x = self.reverse_ode_step(x, score, t)
 
@@ -285,7 +285,7 @@ class IRSDE(SDE):
         T = self.T if T < 0 else T
 
         x = xt.clone()
-        for t in tqdm(reversed(range(1, T + 1))):
+        for t in reversed(range(1, T + 1)):          #去掉tqdm,防止训练的时候test测试刷屏
             noise = self.noise_fn(x, t, **kwargs)
             x = self.reverse_posterior_step(x, noise, t)
 
