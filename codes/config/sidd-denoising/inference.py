@@ -67,9 +67,9 @@ for phase, dataset_opt in sorted(opt["datasets"].items()):
 model = create_model(opt)
 device = model.device
 
-sde = util.DenoisingSDE(max_sigma=opt["sde"]["max_sigma"], T=opt["sde"]["T"], device=device)
+sde = util.IRSDE(max_sigma=opt["sde"]["max_sigma"], T=opt["sde"]["T"], schedule=opt["sde"]["schedule"], eps=opt["sde"]["eps"], device=device)
 sde.set_model(model.model)
-degrad_sigma = opt["degradation"]["sigma"]
+sampling_mode = opt["sde"]["sampling_mode"]
 
 for test_loader in test_loaders:
     test_set_name = test_loader.dataset.opt["name"]  # path opt['']
@@ -88,10 +88,11 @@ for test_loader in test_loaders:
 
         #### input dataset_LQ
         LQ = test_data["LQ"]
+        noisy_state = sde.noise_state(LQ)
 
-        model.feed_data(LQ)
+        model.feed_data(noisy_state, LQ)
         tic = time.time()
-        model.test(sde, sigma=degrad_sigma, save_states=False)
+        model.test(sde, mode=sampling_mode, save_states=False)
         toc = time.time()
         test_times.append(toc - tic)
 

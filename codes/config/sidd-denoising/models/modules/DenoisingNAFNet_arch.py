@@ -100,7 +100,7 @@ class ConditionalNAFNet(nn.Module):
             nn.Linear(time_dim, time_dim)
         )
 
-        self.intro = nn.Conv2d(in_channels=img_channel, out_channels=width, kernel_size=3, padding=1, stride=1, groups=1,
+        self.intro = nn.Conv2d(in_channels=img_channel*2, out_channels=width, kernel_size=3, padding=1, stride=1, groups=1,
                               bias=True)
         self.ending = nn.Conv2d(in_channels=width, out_channels=img_channel, kernel_size=3, padding=1, stride=1, groups=1,
                               bias=True)
@@ -144,10 +144,14 @@ class ConditionalNAFNet(nn.Module):
 
         self.padder_size = 2 ** len(self.encoders)
 
-    def forward(self, x, time):
+    def forward(self, inp, cond, time):
+        inp_res = inp.clone()
 
         if isinstance(time, int) or isinstance(time, float):
-            time = torch.tensor([time]).to(x.device)
+            time = torch.tensor([time]).to(inp.device)
+
+        x = inp - cond
+        x = torch.cat([x, cond], dim=1)
 
         t = self.time_mlp(time)
 

@@ -133,24 +133,25 @@ class DenoisingModel(BaseModel):
             self.ema = EMA(self.model, beta=0.995, update_every=10).to(self.device)
             self.log_dict = OrderedDict()
 
-    def feed_data(self, LQ, GT=None):
-        self.LQ = LQ.to(self.device)    # noisy_state
+    def feed_data(self, state, LQ, GT=None):
+        self.state = state.to(self.device)    # noisy_state
+        self.condition = LQ.to(self.device)  # LQ
         if GT is not None:
-            self.GT = GT.to(self.device)  # GT
+            self.state_0 = GT.to(self.device)  # GT
 
     def optimize_parameters(self, step, timesteps, sde=None):
+        sde.set_mu(self.condition)
         self.optimizer.zero_grad()
 
         timesteps = timesteps.to(self.device)
-        weights = sde.weights(timesteps)
 
-        noise = self.model(self.LQ, timesteps.squeeze())
+        noise = sde.noise_fn(self.state, timesteps.squeeze())
         score = sde.get_score_from_noise(noise, timesteps)
 
         # Learning the maximum likelihood objective for state x_{t-1}
-        xt_1_expection = sde.reverse_sde_step_mean(self.LQ, score, timesteps)
-        xt_1_optimum = sde.reverse_optimum_step(self.LQ, self.GT, timesteps)
-        loss = self.weight * self.loss_fn(xt_1_expection, xt_1_optimum, weights)
+        xt_1_expection = sde.reverse_sde_step_mean(self.state, score, timesteps)
+        xt_1_optimum = sde.reverse_optimum_step(self.state, self.state_0, timesteps)
+        loss = self.weight * self.loss_fn(xt_1_expection, xt_1_optimum)
 
         loss.backward()
         self.optimizer.step()
@@ -159,13 +160,15 @@ class DenoisingModel(BaseModel):
         # set log
         self.log_dict["loss"] = loss.item()
 
-    def test(self, sde=None, sigma=-1, save_states=False):
-        timesteps = sde.T if sigma < 0 else sde.get_optimal_timestep(sigma)
+    def test(self, sde=None, mode='posterior', save_states=False):
+        sde.set_mu(self.condition)
 
         self.model.eval()
         with torch.no_grad():
-            # self.output = sde.reverse_sde(self.LQ, T=timesteps, save_states=save_states)
-            self.output = sde.reverse_ode(self.LQ, T=timesteps, save_states=save_states)
+            if mode == 'sde':
+                self.output = sde.reverse_sde(self.state, save_states=save_states)
+            elif mode == 'posterior':
+                self.output = sde.reverse_posterior(self.state, save_states=save_states)
 
         self.model.train()
 
@@ -175,10 +178,10 @@ class DenoisingModel(BaseModel):
 
     def get_current_visuals(self, need_GT=True):
         out_dict = OrderedDict()
-        out_dict["Input"] = self.LQ.detach()[0].float().cpu()
+        out_dict["Input"] = self.condition.detach()[0].float().cpu()
         out_dict["Output"] = self.output.detach()[0].float().cpu()
         if need_GT:
-            out_dict["GT"] = self.GT.detach()[0].float().cpu()
+            out_dict["GT"] = self.state_0.detach()[0].float().cpu()
         return out_dict
 
     def print_network(self):

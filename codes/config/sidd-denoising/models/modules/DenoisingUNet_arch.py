@@ -11,19 +11,20 @@ from .module_util import (
     NonLinearity,
     Upsample, Downsample,
     default_conv,
-    ResBlock,
+    ResBlock, Upsampler,
     LinearAttention, Attention,
     PreNorm, Residual)
 
 
 class ConditionalUNet(nn.Module):
-    def __init__(self, in_nc, out_nc, nf, depth=4):
+    def __init__(self, in_nc, out_nc, nf, depth=4, upscale=1):
         super().__init__()
         self.depth = depth
+        self.upscale = upscale # not used
 
         block_class = functools.partial(ResBlock, conv=default_conv, act=NonLinearity())
 
-        self.init_conv = default_conv(in_nc, nf, 7)
+        self.init_conv = default_conv(in_nc*2, nf, 7)
         
         # time embeddings
         time_dim = nf * 4
@@ -68,7 +69,7 @@ class ConditionalUNet(nn.Module):
 
         mid_dim = nf * int(math.pow(2, depth))
         self.mid_block1 = block_class(dim_in=mid_dim, dim_out=mid_dim, time_emb_dim=time_dim)
-        self.mid_attn = Residual(PreNorm(mid_dim, Attention(mid_dim)))
+        self.mid_attn = Residual(PreNorm(mid_dim, LinearAttention(mid_dim)))
         self.mid_block2 = block_class(dim_in=mid_dim, dim_out=mid_dim, time_emb_dim=time_dim)
 
         self.final_res_block = block_class(dim_in=nf * 2, dim_out=nf, time_emb_dim=time_dim)
@@ -81,10 +82,13 @@ class ConditionalUNet(nn.Module):
         x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
         return x
 
-    def forward(self, x, time):
+    def forward(self, xt, cond, time):
 
         if isinstance(time, int) or isinstance(time, float):
-            time = torch.tensor([time]).to(x.device)
+            time = torch.tensor([time]).to(xt.device)
+
+        x = xt - cond
+        x = torch.cat([x, cond], dim=1)
 
         H, W = x.shape[2:]
         x = self.check_image_size(x, H, W)

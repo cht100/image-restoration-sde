@@ -68,13 +68,12 @@ model = create_model(opt)
 device = model.device
 lpips_fn = lpips.LPIPS(net='alex').to(device)
 
-sde = util.DenoisingSDE(max_sigma=opt["sde"]["max_sigma"], T=opt["sde"]["T"], device=device)
+sde = util.IRSDE(max_sigma=opt["sde"]["max_sigma"], T=opt["sde"]["T"], schedule=opt["sde"]["schedule"], eps=opt["sde"]["eps"], device=device)
 sde.set_model(model.model)
-
-degrad_sigma = opt["degradation"]["sigma"]
+sampling_mode = opt["sde"]["sampling_mode"]
 
 for test_loader in test_loaders:
-    test_set_name = test_loader.dataset.opt["name"] + f'_sigma{degrad_sigma}'  # path opt['']
+    test_set_name = test_loader.dataset.opt["name"]  # path opt['']
     logger.info("\nTesting [{:s}]...".format(test_set_name))
     test_start_time = time.time()
     dataset_dir = os.path.join(opt["path"]["results_root"], test_set_name)
@@ -99,12 +98,12 @@ for test_loader in test_loaders:
         img_name = os.path.splitext(os.path.basename(img_path))[0]
 
         #### input dataset_LQ
-        GT = test_data["GT"]
-        LQ = util.add_noise(GT, degrad_sigma)
+        LQ, GT = test_data["LQ"], test_data["GT"]
+        noisy_state = sde.noise_state(LQ)
 
-        model.feed_data(LQ, GT)
+        model.feed_data(noisy_state, LQ, GT)
         tic = time.time()
-        model.test(sde, sigma=degrad_sigma, save_states=True)
+        model.test(sde, mode=sampling_mode, save_states=False)
         toc = time.time()
         test_times.append(toc - tic)
 

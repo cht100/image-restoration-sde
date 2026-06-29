@@ -213,10 +213,8 @@ def main():
         current_step = 0
         start_epoch = 0
 
-    sde = util.DenoisingSDE(max_sigma=opt["sde"]["max_sigma"], T=opt["sde"]["T"], schedule=opt["sde"]["schedule"], device=device)
+    sde = util.IRSDE(max_sigma=opt["sde"]["max_sigma"], T=opt["sde"]["T"], schedule=opt["sde"]["schedule"], eps=opt["sde"]["eps"], device=device)
     sde.set_model(model.model)
-
-    degrad_sigma = opt["degradation"]["sigma"]
 
     #### training
     logger.info(
@@ -236,10 +234,10 @@ def main():
             if current_step > total_iters:
                 break
 
-            GT = train_data["GT"]
-            timesteps, LQ = sde.generate_random_states(x0=GT)
+            LQ, GT = train_data["LQ"], train_data["GT"]
+            timesteps, states = sde.generate_random_states(x0=GT, mu=LQ)
 
-            model.feed_data(LQ, GT) # xt, mu, x0
+            model.feed_data(states, LQ, GT) # xt, mu, x0
             model.optimize_parameters(current_step, timesteps, sde)
             model.update_learning_rate(
                 current_step, warmup_iter=opt["train"]["warmup_iter"]
@@ -259,18 +257,34 @@ def main():
                 if rank <= 0:
                     logger.info(message)
 
+            #### save models and training states
+            if current_step % opt["logger"]["save_checkpoint_freq"] == 0:
+                if rank <= 0:
+                    logger.info("Saving models and training states.")
+                    model.save(current_step)
+                    model.save_training_state(epoch, current_step)
+
             # validation, to produce ker_map_list(fake)
-            if current_step % opt["train"]["val_freq"] == 0 and rank <= 0:
+            val_freq = int(opt["train"].get("val_freq") or 0)
+            if val_freq > 0 and current_step % val_freq == 0 and rank <= 0:
                 avg_psnr = 0.0
                 idx = 0
+                val_max_images = int(opt["train"].get("val_max_images") or 0)
+                logger.info(
+                    "# Validation # start at iter: {:d}, max_images: {}".format(
+                        current_step, val_max_images if val_max_images > 0 else "all"
+                    )
+                )
                 for _, val_data in enumerate(val_loader):
+                    if val_max_images > 0 and idx >= val_max_images:
+                        break
 
-                    GT = val_data["GT"]
-                    LQ = util.add_noise(GT, degrad_sigma)
+                    LQ, GT = val_data["LQ"], val_data["GT"]
+                    noisy_state = sde.noise_state(LQ)
 
                     # valid Predictor
-                    model.feed_data(LQ, GT)
-                    model.test(sde, sigma=degrad_sigma)
+                    model.feed_data(noisy_state, LQ, GT)
+                    model.test(sde)
                     visuals = model.get_current_visuals()
 
                     output = util.tensor2img(visuals["Output"].squeeze())  # uint8
@@ -279,8 +293,14 @@ def main():
                     # calculate PSNR
                     avg_psnr += util.calculate_psnr(output, gt_img)
                     idx += 1
+                    if idx % 10 == 0:
+                        logger.info("# Validation # iter: {:d}, image: {:d}".format(current_step, idx))
 
-                avg_psnr = avg_psnr / idx
+                if idx == 0:
+                    logger.warning("# Validation # skipped because no validation images were processed.")
+                    avg_psnr = 0.0
+                else:
+                    avg_psnr = avg_psnr / idx
 
                 if avg_psnr > best_psnr:
                     best_psnr = avg_psnr
@@ -303,12 +323,6 @@ def main():
 
             if error.value:
                 sys.exit(0)
-            #### save models and training states
-            if current_step % opt["logger"]["save_checkpoint_freq"] == 0:
-                if rank <= 0:
-                    logger.info("Saving models and training states.")
-                    model.save(current_step)
-                    model.save_training_state(epoch, current_step)
 
     if rank <= 0:
         logger.info("Saving the final model.")

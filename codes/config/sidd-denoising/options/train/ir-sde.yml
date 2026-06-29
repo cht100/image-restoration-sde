@@ -2,17 +2,15 @@
 name: ir-sde
 use_tb_logger: true
 model: denoising
+distortion: sidd_denoising
 gpu_ids: [4]
 
 sde:
   max_sigma: 70  # 0.5
   T: 1000
   schedule: cosine # cosine # linear
+  eps: 0.005
 
-degradation:
-  sigma: 50
-  noise_type: G # Gaussian noise: G
-  
 #### datasets
 datasets:
   train:
@@ -31,7 +29,7 @@ datasets:
   val:
     name: Val_Dataset
     mode: LQGT
-    dataroot_GT: /data1/jiangtaoren/datasets/SIDD/test/target           #/home/ziwlu/datasets/testsets/McMaster
+    dataroot_GT: /data1/jiangtaoren/datasets/SIDD/test/target
     dataroot_LQ: /data1/jiangtaoren/datasets/SIDD/test/input
 
 #### network structures
@@ -69,6 +67,7 @@ train:
 
   manual_seed: 0
   val_freq: !!float 1e4
+  val_max_images: 8
 
 #### logger
 logger:
